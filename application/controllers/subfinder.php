@@ -96,8 +96,12 @@ class SubFinder extends CI_Controller {
 		   'req_vol_id' => $req_vol->id ,
 		   'date_time' => $date_time
 		);
+		
+		
 
 		$this->db->insert('request', $data); 
+		
+		
 		
 		$this->db->from('volunteer')->where_not_in('id', $req_vol->id)->where('city',$req_vol->city);
 		$query = $this->db->get();
@@ -105,14 +109,40 @@ class SubFinder extends CI_Controller {
 		list($name) = explode(" ",$req_vol->name);
 		list($center) = explode(" ",$req_vol->center);
 		
+		//Calculate the score for each volunteer to separate them into batches for messaging
 		
-		foreach ($query->result() as $selectedvol){
+		foreach($query->result() as $selectedvol){
+			
+			$vol_score = 0;
+			if($selectedvol->credit < 0)
+				$vol_score += 1;
+			else if($selectedvol->credit < 3)
+				$vol_score += 0.5;
+			if($selectedvol->center === $req_vol->center)		
+				$vol_score += 1;
+						
+			$score = array(
+				$selectedvol->id => $vol_score;					
+			)
+		}
+		
+		arsort($score);
+		
+		$i = 0;
+		
+		//Message the volunteers about the sub request
+		
+		foreach($score as $selectedvol_id => $vol_score){
+			
+			$query3 = $this->db->from('volunteer')->where('id',$selectedvol_id)->get();
+			$selectedvol = $query3->row();
 			
 			echo "<br>Selected Vol: $selectedvol->name <br>";
 			echo "Message to $selectedvol->phone: 
 			$name requires a substitute at $center 
 			on $req_vol->day_time($date). To sub text 'SFOR $req_id' to 1234567890.<br>" ;
-				
+			
+			i++;				
 			
 		}
 	}
