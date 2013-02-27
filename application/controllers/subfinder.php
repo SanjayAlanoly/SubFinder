@@ -10,7 +10,23 @@ class SubFinder extends CI_Controller {
 		date_default_timezone_set('Asia/Calcutta');
 	}
 	
+			
+	public function test(){
 		
+	$day1 = new DateTime("now");
+	$day2 = new DateTime("next friday 4:30 PM");
+	
+	$diff = $day1->diff($day2);
+	$days = $diff->format('%a');
+	$hours = $diff->format('%h');
+	$minutes = $diff->format('%i');
+	$min = $minutes + ($days*24*60) + ($hours*60);
+	echo "$days    $hours    $minutes<br>";
+	echo $min;
+	
+	}
+	
+	
 	public function main(){
 		
 		if($_REQUEST['keyword'] === "SREQ")
@@ -109,26 +125,44 @@ class SubFinder extends CI_Controller {
 		list($name) = explode(" ",$req_vol->name);
 		list($center) = explode(" ",$req_vol->center);
 		
+		
+		//Calculate the minutes till the class for which the sub was requested
+		$date_diff = $day_time->diff(new DateTime("now"),true);
+		
+		$days = $date_diff->format('%a');
+		$hours = $date_diff->format('%h');
+		$minutes = $date_diff->format('%i');
+		$minutes = $minutes + ($days*24*60) + ($hours*60);
+		
+		
 		//Calculate the score for each volunteer to separate them into batches for messaging
+		
+		$score = array();
 		
 		foreach($query->result() as $selectedvol){
 			
 			$vol_score = 0;
+			
 			if($selectedvol->credit < 0)
 				$vol_score += 1;
 			else if($selectedvol->credit < 3)
 				$vol_score += 0.5;
 			if($selectedvol->center === $req_vol->center)		
 				$vol_score += 1;
-						
-			$score = array(
-				$selectedvol->id => $vol_score;					
-			)
+			
+			//echo "$selectedvol->name: $vol_score<br>";
+			
+			$temp = array(
+				$selectedvol->id => $vol_score					
+			);
+			
+			$score = $score + $temp;
 		}
 		
+			
 		arsort($score);
 		
-		$i = 0;
+		$vol_messaged = 0;
 		
 		//Message the volunteers about the sub request
 		
@@ -142,9 +176,13 @@ class SubFinder extends CI_Controller {
 			$name requires a substitute at $center 
 			on $req_vol->day_time($date). To sub text 'SFOR $req_id' to 1234567890.<br>" ;
 			
-			i++;				
+			$vol_messaged++;
 			
+			if($vol_messaged == 5 || $vol_messaged == 10 || $vol_messaged == 20 || $vol_messaged == 40 || $vol_messaged == 80)
+				sleep(($minutes*60)/50);		
 		}
+		
+		
 	}
 	
 	
