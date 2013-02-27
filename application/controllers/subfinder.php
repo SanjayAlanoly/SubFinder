@@ -2,8 +2,8 @@
 
 class SubFinder extends CI_Controller {
 	
-	public function __construct()
-	{
+	public function __construct(){
+	
 		parent::__construct();
 		$this->load->database();
 		$this->load->helper('string');
@@ -11,6 +11,19 @@ class SubFinder extends CI_Controller {
 	}
 	
 		
+	public function main(){
+		
+		if($_REQUEST['keyword'] === "SREQ")
+			sreq();
+		else if($_REQUEST['keyword'] === "SFOR")
+			sfor();
+		else if($_REQUEST['keyword'] === "SCNF")
+			scnf();
+		else if($_REQUEST['keyword'] === "SDEL")
+			sdel();
+		
+	}
+	
 	
 	public function sreq(){
 	
@@ -279,7 +292,7 @@ class SubFinder extends CI_Controller {
 	}
 	
 	
-	public function srem(){
+	public function sdel(){
 		
 		$phonevol = preg_replace('/^91/', '', $_REQUEST['msisdn']); // Gupshup uses a 91 at the start. Remove that.
 		$keyword = strtolower($_REQUEST['keyword']);
@@ -340,6 +353,6 @@ class SubFinder extends CI_Controller {
 //http://localhost/index.php/subfinder/sreq?msisdn=919633977657&keyword=SREQ&content=SREQ
 //http://localhost/index.php/subfinder/sfor?msisdn=919746419487&keyword=SFOR&content=SFOR+9tdn
 //http://localhost/index.php/subfinder/scnf?msisdn=919746419487&keyword=SCNF&content=SCNF+9tdn+2
-//http://localhost/index.php/subfinder/srem?msisdn=919746419487&keyword=SREM&content=SREM+9tdn
+//http://localhost/index.php/subfinder/sdel?msisdn=919746419487&keyword=SREM&content=SREM+9tdn
 ?>		
 
