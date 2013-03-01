@@ -13,16 +13,19 @@ class SubFinder extends CI_Controller {
 			
 	public function test(){
 		
-	$day1 = new DateTime("now");
-	$day2 = new DateTime("next friday 4:30 PM");
 	
-	$diff = $day1->diff($day2);
-	$days = $diff->format('%a');
-	$hours = $diff->format('%h');
-	$minutes = $diff->format('%i');
-	$min = $minutes + ($days*24*60) + ($hours*60);
-	echo "$days    $hours    $minutes<br>";
-	echo $min;
+	
+$query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,batch.center_id,batch.year as batchyear',FALSE)->select('userbatch.level_id as levelid, userbatch.batch_id as batchid',false)
+		->select('city.name as cityname',FALSE)->select('center.name as centername',FALSE)->select('usergroup.group_id as groupid',FALSE)
+		->from('user')->join('userbatch','user.id = userbatch.user_id')->join('batch','userbatch.batch_id = batch.id')
+		->join('center','batch.center_id = center.id')->join('usergroup','user.id = usergroup.user_id')
+		->join('city','user.city_id = city.id')->where('phone','9746811700')->where('batch.year','2012')->get();
+		
+	$vol = $query->row();
+	echo $vol->batchyear;
+
+	
+	
 	
 	}
 	
@@ -47,8 +50,24 @@ class SubFinder extends CI_Controller {
 		$keyword = strtolower($_REQUEST['keyword']);
 		$content = $_REQUEST['content'];
 		
+		$today = new DateTime("now");
+		$currentyear =  $today->format('Y');
+		$changedate = new DateTime("31st March $currentyear");
+	
+		if($today <= $changedate)
+			$madyear = $today->format('Y') - 1;
+		else
+			$madyear = $today->format('Y');
+		
+		
+		
 		//Get the details of the volunteer who has requested the substitution
-		$query = $this->db->from('volunteer')->where('phone', $phonevol)->get(); //Get details of volunteer who send the request message
+		$query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,batch.center_id,batch.year as batchyear',FALSE)->select('userbatch.level_id as levelid, userbatch.batch_id as batchid',false)
+		->select('city.name as cityname',FALSE)->select('center.name as centername',FALSE)->select('usergroup.group_id as groupid',FALSE)
+		->from('user')->join('userbatch','user.id = userbatch.user_id')->join('batch','userbatch.batch_id = batch.id')
+		->join('center','batch.center_id = center.id')->join('usergroup','user.id = usergroup.user_id')
+		->join('city','user.city_id = city.id')->where('phone', $phonevol)->where('batch.year',$madyear)->get();
+		
 		
 		if($query->num_rows() == 0){
 			echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.<br>";
@@ -86,7 +105,9 @@ class SubFinder extends CI_Controller {
 			$extra = 0;
 		
 		//Create the date and time in format suitable for the MySQL table
-		$day_time = new DateTime("Next $req_vol->day_time +$extra week");
+		
+		$dow_text = date('D', strtotime("Sunday +{$req_vol->day} days"));
+		$day_time = new DateTime("Next $dow_text $req_vol->class_time +$extra week");
 		$date_time = $day_time->format('Y-m-d H:i:s');
 		
 		$date = $day_time->format('d-m-Y');
@@ -117,13 +138,20 @@ class SubFinder extends CI_Controller {
 
 		$this->db->insert('request', $data); 
 		
+		sleep(20);
 		
+		$this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,batch.center_id,batch.year as batchyear',FALSE)->select('city.name as cityname',FALSE)
+		->select('center.name as centername',FALSE)->select('usergroup.group_id as groupid',FALSE)->select('userbatch.level_id as levelid, userbatch.batch_id as batchid',false)
+		->from('user')->join('userbatch','user.id = userbatch.user_id')->join('batch','userbatch.batch_id = batch.id')
+		->join('center','batch.center_id = center.id')
+		->join('usergroup','user.id = usergroup.user_id')->join('city','user.city_id = city.id')
+		->where_not_in('user.id', $req_vol->id)->where('user.city_id',$req_vol->city_id)
+		->where('user.user_type','volunteer')->where('usergroup.group_id','9')->where_not_in('userbatch.batch_id',$req_vol->batchid)->where('batch.year',$madyear);
 		
-		$this->db->from('volunteer')->where_not_in('id', $req_vol->id)->where('city',$req_vol->city);
 		$query = $this->db->get();
 		
 		list($name) = explode(" ",$req_vol->name);
-		list($center) = explode(" ",$req_vol->center);
+		list($center) = explode(" ",$req_vol->centername);
 		
 		
 		//Calculate the minutes till the class for which the sub was requested
@@ -147,10 +175,14 @@ class SubFinder extends CI_Controller {
 				$vol_score += 1;
 			else if($selectedvol->credit < 3)
 				$vol_score += 0.5;
-			if($selectedvol->center === $req_vol->center)		
+				
+			if($selectedvol->levelid === $req_vol->levelid)
+				$vol_score += 1;
+			if($selectedvol->center_id === $req_vol->center_id)		
 				$vol_score += 1;
 			
-			//echo "$selectedvol->name: $vol_score<br>";
+			
+			
 			
 			$temp = array(
 				$selectedvol->id => $vol_score					
@@ -168,18 +200,43 @@ class SubFinder extends CI_Controller {
 		
 		foreach($score as $selectedvol_id => $vol_score){
 			
-			$query3 = $this->db->from('volunteer')->where('id',$selectedvol_id)->get();
+			$query3 = $this->db->from('user')->where('id',$selectedvol_id)->get();
 			$selectedvol = $query3->row();
 			
 			echo "<br>Selected Vol: $selectedvol->name <br>";
+			echo "Vol Score: $vol_score<br> 	";
 			echo "Message to $selectedvol->phone: 
 			$name requires a substitute at $center 
-			on $req_vol->day_time($date). To sub text 'SFOR $req_id' to 1234567890.<br>" ;
+			on $dow_text($date). To sub text 'SFOR $req_id' to 9220092200.<br>" ;
 			
 			$vol_messaged++;
 			
-			if($vol_messaged == 5 || $vol_messaged == 10 || $vol_messaged == 20 || $vol_messaged == 40 || $vol_messaged == 80)
+			/*
+			//Check if any volunteers have responded to the request. It stops messaging after the first response.
+			if($vol_messaged == 5 || $vol_messaged == 10 || $vol_messaged == 20 || $vol_messaged == 40
+			|| $vol_messaged == 60 || $vol_messaged == 80 || $vol_messaged == 100 || $vol_messaged == 120
+			|| $vol_messaged == 140 || $vol_messaged == 160 || $vol_messaged == 180 || $vol_messaged == 200
+			|| $vol_messaged == 250 || $vol_messaged == 300){
+			
+				$query4 = $this->db->from('request')->where('req_id',$req_id)->get();
+				$request = $query4->row();
+				if($request->int_vol_1 != -1)
+					break;
+			
+			
+			}
+			
+			
+			
+			//Wait for a certain amount of time after messaging one batch of volunteers
+			
+			if($vol_messaged == 5 || $vol_messaged == 10 || $vol_messaged == 20 || $vol_messaged == 40
+			|| $vol_messaged == 60 || $vol_messaged == 80 || $vol_messaged == 100 || $vol_messaged == 120
+			|| $vol_messaged == 140 || $vol_messaged == 160 || $vol_messaged == 180 || $vol_messaged == 200
+			|| $vol_messaged == 250 || $vol_messaged == 300)
 				sleep(($minutes*60)/50);		
+				
+			*/
 		}
 		
 		
@@ -194,7 +251,7 @@ class SubFinder extends CI_Controller {
 		
 		
 		//Get the details of the volunteer who has send the message
-		$query = $this->db->from('volunteer')->where('phone', $phonevol)->get();
+		$query = $this->db->from('user')->where('phone', $phonevol)->get();
 		
 		if($query->num_rows() == 0){
 			echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details<br>";
@@ -259,7 +316,7 @@ class SubFinder extends CI_Controller {
 						//Inform the volunteer who has made the request about the interested volunteer
 						list($int_vol_name) = explode(" ",$int_vol->name);
 						$req_vol = $query2->row();
-						echo "Message to $req_vol->phone: $int_vol_name is interested to sub for you. To confirm text 'SCNF $request->req_id $i' to 1234567890.<br>";
+						echo "Message to $req_vol->phone: $int_vol_name is interested to sub for you. To confirm text 'SCNF $request->req_id $i' to 9220092200.<br>";
 						break;
 					}
 				}
