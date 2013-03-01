@@ -15,7 +15,8 @@ class SubFinder extends CI_Controller {
 	public function test(){
 		
 	
-	
+	//$this->sms->send("9633977657","The request(blahblublah) has been removed from the database.");
+	echo "Done!";
 		
 	}
 	
@@ -61,7 +62,8 @@ class SubFinder extends CI_Controller {
 		
 		
 		if($query->num_rows() == 0){
-			echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.<br>";
+			//echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.<br>";
+			this->sms->send($phonevol,"Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.");
 			exit();
 		}
 		
@@ -108,14 +110,15 @@ class SubFinder extends CI_Controller {
 		$query = $this->db->from('request')->where('req_vol_id',$req_vol->id)->where('date_time',$date_time)->get();
 		
 		if($query->num_rows() > 0){
-			echo "Message to $phonevol: Your request for $date has already been registered and is under process.<br>";
+			//echo "Message to $phonevol: Your request for $date has already been registered and is under process.<br>";
+			$this->sms->send($phonevol,"Your request for $date has already been registered and is under process.");
 			exit();
 		}
 		
 		//Message the volunteer about the the ID number
-		echo "Request Vol: $req_vol->name <br>";
-		echo "Message to $phonevol: Your request for $date has been registered under the REQ ID: $req_id. <br>";
-		
+		//echo "Request Vol: $req_vol->name <br>";
+		//echo "Message to $phonevol: Your request for $date has been registered under the REQ ID: $req_id. <br>";
+		$this->sms->send($phonevol,"Your request for $date has been registered under the REQ ID: $req_id.");
 
 				
 
@@ -195,15 +198,17 @@ class SubFinder extends CI_Controller {
 			$query3 = $this->db->from('user')->where('id',$selectedvol_id)->get();
 			$selectedvol = $query3->row();
 			
-			echo "<br>Selected Vol: $selectedvol->name <br>";
-			echo "Vol Score: $vol_score<br> 	";
-			echo "Message to $selectedvol->phone: 
+			//echo "<br>Selected Vol: $selectedvol->name <br>";
+			//echo "Vol Score: $vol_score<br> 	";
+			/*echo "Message to $selectedvol->phone: 
 			$name requires a substitute at $center 
-			on $dow $time($date). To sub text 'SFOR $req_id' to 9220092200.<br>" ;
+			on $dow $time($date). To sub text 'SFOR $req_id' to 9220092200.<br>" ;*/
+			
+			$this->sms->send($selectedvol->phone,"$name requires a substitute at $center on $dow $time($date). To sub text 'SFOR $req_id' to 9220092200.");
 			
 			$vol_messaged++;
 			
-			/*
+			
 			//Check if any volunteers have responded to the request. It stops messaging after the first response.
 			if($vol_messaged == 5 || $vol_messaged == 10 || $vol_messaged == 20 || $vol_messaged == 40
 			|| $vol_messaged == 60 || $vol_messaged == 80 || $vol_messaged == 100 || $vol_messaged == 120
@@ -228,7 +233,7 @@ class SubFinder extends CI_Controller {
 			|| $vol_messaged == 250 || $vol_messaged == 300)
 				sleep(($minutes*60)/50);		
 				
-			*/
+			
 		}
 		
 		
@@ -246,7 +251,8 @@ class SubFinder extends CI_Controller {
 		$query = $this->db->from('user')->where('phone', $phonevol)->get();
 		
 		if($query->num_rows() == 0){
-			echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details<br>";
+			//echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.<br>";
+			$this->sms->send($phonevol,"Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.");
 			exit();
 		}
 				
@@ -267,8 +273,11 @@ class SubFinder extends CI_Controller {
 		//Check if the volunteer interest has already been registered in the database
 		$flag_int_already_reg = false;
 		
-		if($flag_req_exist == false)
-			echo "Message to $int_vol->phone: The REQ ID that you have specified doesn't exist. Please check and resend message.<br>";
+		if($flag_req_exist == false){
+			//echo "Message to $int_vol->phone: The REQ ID that you have specified doesn't exist. Please check and resend message.<br>";
+			$this->sms->send($int_vol->phone,"The REQ ID that you have specified doesn't exist. Please check and resend message.");
+			}
+			
 		else{
 			$query0 = $this->db->from('request')->where('req_id',$content)->get();
 			$request = $query0->row();
@@ -276,8 +285,8 @@ class SubFinder extends CI_Controller {
 			for($i = 1; $i<=20; $i++){
 				if($request->{$name.$i} == $int_vol->id){
 					$flag_int_already_reg = true;
-					echo "Message to $int_vol->phone: Your response to the request($request->req_id) has already 
-					been registered. Please wait for confirmation.<br>";
+					//echo "Message to $int_vol->phone: Your response to the request($request->req_id) has already been registered. Please wait for confirmation.<br>";
+					$this->sms->send($int_vol->phone,"Your response to the request($request->req_id) has already been registered. Please wait for confirmation.");
 					break;
 				}
 			}
@@ -288,8 +297,10 @@ class SubFinder extends CI_Controller {
 		if($flag_req_exist == true && $flag_int_already_reg == false){			
 			$query1 = $this->db->from('request')->where('req_id',$content)->get();
 			$request = $query1->row();
-			if($request->sub_vol != -1)
+			if($request->sub_vol != -1){
 				echo "Message to $int_vol->phone: We have already found a volunteer to sub for the request($request->req_id). Thank you for your response.<br>";
+				$this->sms->send($int_vol->phone,"We have already found a volunteer to sub for the request($request->req_id). Thank you for your response.");
+				}
 			else{
 				$name = "int_vol_";
 				for($i = 1; $i<=20; $i++){
@@ -302,13 +313,15 @@ class SubFinder extends CI_Controller {
 						//Insert the interested volunteers id into the 'request' table
 						$this->db->where('req_id',$content)->update('request', $data); 
 						
-						echo "Message to $int_vol->phone: Your response to the request($request->req_id) has been registered. Please wait for confirmation.<br>";
+						//echo "Message to $int_vol->phone: Your response to the request($request->req_id) has been registered. Please wait for confirmation.<br>";
+						$this->sms->send($int_vol->phone,"Your response to the request($request->req_id) has been registered. Please wait for confirmation.");
 						$query2 = $this->db->from('user')->where('id',$request->req_vol_id)->get();
 						
 						//Inform the volunteer who has made the request about the interested volunteer
 						list($int_vol_name) = explode(" ",$int_vol->name);
 						$req_vol = $query2->row();
-						echo "Message to $req_vol->phone: $int_vol_name is interested to sub for you. To confirm text 'SCNF $request->req_id $i' to 9220092200.<br>";
+						//echo "Message to $req_vol->phone: $int_vol_name is interested to sub for you. To confirm text 'SCNF $request->req_id $i' to 9220092200.<br>";
+						$this->sms->send($req_vol->phone,"$int_vol_name is interested to sub for you. To confirm text 'SCNF $request->req_id $i' to 9220092200.");
 						break;
 					}
 				}
@@ -338,7 +351,8 @@ class SubFinder extends CI_Controller {
 		->join('center','batch.center_id = center.id')->where('phone', $phonevol)->get();
 			
 		if($query->num_rows() == 0){
-			echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details<br>";
+			//echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.<br>";
+			$this->sms->send($phonevol,"Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.");
 			exit();
 		}
 				
@@ -356,7 +370,8 @@ class SubFinder extends CI_Controller {
 		if($query->num_rows() > 0)
 			$flag_req_exist = true;
 		else{
-			echo "Message to $req_vol->phone: The REQ ID that you have specified doesn't exist. Please check and resend the message.<br>";
+			//echo "Message to $req_vol->phone: The REQ ID that you have specified doesn't exist. Please check and resend the message.<br>";
+			$this->sms->send($req_vol->phone,"The REQ ID that you have specified doesn't exist. Please check and resend the message.");
 			exit();
 		}
 		
@@ -364,7 +379,8 @@ class SubFinder extends CI_Controller {
 		//Check if the volunteer number was specified in the message
 		if($vol_no === ""){
 			
-			echo "Message to $req_vol->phone: The Volunteer ID you have specified doesn't exist. Please check and resend the message.<br>";
+			//echo "Message to $req_vol->phone: The Volunteer ID you have specified doesn't exist. Please check and resend the message.<br>";
+			$this->sms->send($req_vol->phone,"The Volunteer ID you have specified doesn't exist. Please check and resend the message.");
 			exit();
 		
 		}
@@ -383,7 +399,8 @@ class SubFinder extends CI_Controller {
 			$flag_vol_exist = true;
 		else{
 			
-			echo "Message to $req_vol->phone: The Volunteer ID you have specified doesn't exist. Please check and resend the message.<br>";
+			//echo "Message to $req_vol->phone: The Volunteer ID you have specified doesn't exist. Please check and resend the message.<br>";
+			$this->sms->send($req_vol->phone,"The Volunteer ID you have specified doesn't exist. Please check and resend the message.");
 			exit();
 		}
 		
@@ -394,7 +411,8 @@ class SubFinder extends CI_Controller {
 			$query3 = $this->db->from('user')->where('id',$request->sub_vol)->get();
 			$sub_vol = $query3->row();
 			list($sub_vol_name) = explode(" ",$sub_vol->name);
-			echo "Message to $req_vol->phone: You have already confirmed $sub_vol_name for the request($req_id).<br>";
+			//echo "Message to $req_vol->phone: You have already confirmed $sub_vol_name for the request($req_id).<br>";
+			$this->sms->send($req_vol->phone,"You have already confirmed $sub_vol_name for the request($req_id).");
 			exit();
 		}
 		
@@ -416,8 +434,11 @@ class SubFinder extends CI_Controller {
 			list($req_vol_name) = explode(" ",$req_vol->name);
 			list($center) = explode(" ",$req_vol->centername);
 			
-			echo "Message to $sub_vol->phone: You have been confirmed to sub for $req_vol_name($req_vol->phone) at $center on $day_time($date).<br>";
-			echo "Message to $req_vol->phone: You have confirmed $sub_vol->name($sub_vol->phone) to sub for you on $day_time($date).<br>";
+			//echo "Message to $sub_vol->phone: You have been confirmed to sub for $req_vol_name($req_vol->phone) at $center on $day_time($date).<br>";
+			$this->sms->send($sub_vol->phone,"You have been confirmed to sub for $req_vol_name($req_vol->phone) at $center on $day_time($date).");
+			//echo "Message to $req_vol->phone: You have confirmed $sub_vol->name($sub_vol->phone) to sub for you on $day_time($date).<br>";
+			$this->sms->send($req_vol->phone,"You have confirmed $sub_vol->name($sub_vol->phone) to sub for you on $day_time($date).");
+			
 			
 			//Message the other interested volunteers about the confirmation
 			$name = "int_vol_";
@@ -426,7 +447,8 @@ class SubFinder extends CI_Controller {
 					
 					$query2 = $this->db->from('user')->where('id',$request->{$name.$i})->get();
 					$int_vol = $query2->row();	
-					echo "Message to $int_vol->phone: We have found a volunteer to sub for the request($request->req_id). Thank you for your response.<br>";
+					//echo "Message to $int_vol->phone: We have found a volunteer to sub for the request($request->req_id). Thank you for your response.<br>";
+					$this->sms->send($int_vol->phone,"We have found a volunteer to sub for the request($request->req_id). Thank you for your response.");
 					
 				}
 			}
@@ -447,7 +469,8 @@ class SubFinder extends CI_Controller {
 		$query = $this->db->from('user')->where('phone', $phonevol)->get();
 			
 		if($query->num_rows() == 0){
-			echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details<br>";
+			//echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.<br>";
+			$this->sms->send($phonevol,"Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details.");
 			exit();
 		}
 				
@@ -461,7 +484,8 @@ class SubFinder extends CI_Controller {
 		$query = $this->db->from('request')->where('req_id',$content)->get();
 			
 		if($query->num_rows() == 0){
-			echo "Message to $req_vol->phone: The REQ ID that you have specified doesn't exist. Please check and resend the message.<br>";
+			//echo "Message to $req_vol->phone: The REQ ID that you have specified doesn't exist. Please check and resend the message.<br>";
+			$this->sms->send($req_vol->phone,"The REQ ID that you have specified doesn't exist. Please check and resend the message.");
 			exit();
 		}
 		
@@ -470,14 +494,16 @@ class SubFinder extends CI_Controller {
 		$request = $query->row();
 		
 		if($request->req_vol_id != $req_vol->id){
-			echo "Message to $req_vol->phone: The request($content) has been created by another volunteer. You can only remove requests created by you.<br>";
+			//echo "Message to $req_vol->phone: The request($content) has been created by another volunteer. You can only remove requests created by you.<br>";
+			$this->sms->send($req_vol->phone,"The request($content) has been created by another volunteer. You can only remove requests created by you.");
 			exit();
 		}
 		
 		//Delete and inform the volunteer about the same
 		$this->db->delete('request', array('req_id' => $content)); 
 		
-		echo "Message to $req_vol->phone: The request($content) has been removed from the database.<br>";
+		//echo "Message to $req_vol->phone: The request($content) has been removed from the database.<br>";
+		$this->sms->send($req_vol->phone,"The request($content) has been removed from the database.");
 		
 		
 		//Inform all the volunteers who had expressed interest in subbing about the removal of the request
@@ -487,7 +513,8 @@ class SubFinder extends CI_Controller {
 				
 				$query1 = $this->db->from('volunteer')->where('id',$request->{$name.$i})->get();
 				$int_vol = $query1->row();	
-				echo "Message to $int_vol->phone: The request($content) has been removed and is no longer required. Thank you for your response.<br>";
+				//echo "Message to $int_vol->phone: The request($content) has been removed and is no longer required. Thank you for your response.<br>";
+				$this->sms->send($int_vol->phone,"The request($content) has been removed and is no longer required. Thank you for your response.");
 				
 			}
 		}
