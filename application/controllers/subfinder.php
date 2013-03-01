@@ -7,6 +7,7 @@ class SubFinder extends CI_Controller {
 		parent::__construct();
 		$this->load->database();
 		$this->load->helper('string');
+		$this->load->library('sms');
 		date_default_timezone_set('Asia/Calcutta');
 	}
 	
@@ -15,31 +16,21 @@ class SubFinder extends CI_Controller {
 		
 	
 	
-$query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,batch.center_id,batch.year as batchyear',FALSE)->select('userbatch.level_id as levelid, userbatch.batch_id as batchid',false)
-		->select('city.name as cityname',FALSE)->select('center.name as centername',FALSE)->select('usergroup.group_id as groupid',FALSE)
-		->from('user')->join('userbatch','user.id = userbatch.user_id')->join('batch','userbatch.batch_id = batch.id')
-		->join('center','batch.center_id = center.id')->join('usergroup','user.id = usergroup.user_id')
-		->join('city','user.city_id = city.id')->where('phone','9746811700')->where('batch.year','2012')->get();
 		
-	$vol = $query->row();
-	echo $vol->batchyear;
-
-	
-	
-	
 	}
+	
 	
 	
 	public function main(){
 		
 		if($_REQUEST['keyword'] === "SREQ")
-			sreq();
+			$this->sreq();
 		else if($_REQUEST['keyword'] === "SFOR")
-			sfor();
+			$this->sfor();
 		else if($_REQUEST['keyword'] === "SCNF")
-			scnf();
+			$this->scnf();
 		else if($_REQUEST['keyword'] === "SDEL")
-			sdel();
+			$this->sdel();
 		
 	}
 	
@@ -106,10 +97,11 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 		
 		//Create the date and time in format suitable for the MySQL table
 		
-		$dow_text = date('D', strtotime("Sunday +{$req_vol->day} days"));
-		$day_time = new DateTime("Next $dow_text $req_vol->class_time +$extra week");
+		$dow = date('D', strtotime("Sunday +{$req_vol->day} days"));
+		$day_time = new DateTime("Next $dow $req_vol->class_time +$extra week");
 		$date_time = $day_time->format('Y-m-d H:i:s');
 		
+		$time = $day_time->format('g:i A');
 		$date = $day_time->format('d-m-Y');
 		
 		//Check if the volunteer has already made a request for the same day
@@ -207,7 +199,7 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 			echo "Vol Score: $vol_score<br> 	";
 			echo "Message to $selectedvol->phone: 
 			$name requires a substitute at $center 
-			on $dow_text($date). To sub text 'SFOR $req_id' to 9220092200.<br>" ;
+			on $dow $time($date). To sub text 'SFOR $req_id' to 9220092200.<br>" ;
 			
 			$vol_messaged++;
 			
@@ -311,7 +303,7 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 						$this->db->where('req_id',$content)->update('request', $data); 
 						
 						echo "Message to $int_vol->phone: Your response to the request($request->req_id) has been registered. Please wait for confirmation.<br>";
-						$query2 = $this->db->from('volunteer')->where('id',$request->req_vol_id)->get();
+						$query2 = $this->db->from('user')->where('id',$request->req_vol_id)->get();
 						
 						//Inform the volunteer who has made the request about the interested volunteer
 						list($int_vol_name) = explode(" ",$int_vol->name);
@@ -330,8 +322,20 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 		$keyword = strtolower($_REQUEST['keyword']);
 		$content = $_REQUEST['content'];
 		
+		
+		$today = new DateTime("now");
+		$currentyear =  $today->format('Y');
+		$changedate = new DateTime("31st March $currentyear");
+	
+		if($today <= $changedate)
+			$madyear = $today->format('Y') - 1;
+		else
+			$madyear = $today->format('Y');
+		
 		//Get the details of the volunteer who has made the request
-		$query = $this->db->from('volunteer')->where('phone', $phonevol)->get();
+		$query = $this->db->select('user.*',FALSE)->from('user')->select('center.name as centername',FALSE)
+		->join('userbatch','user.id = userbatch.user_id')->join('batch','userbatch.batch_id = batch.id')
+		->join('center','batch.center_id = center.id')->where('phone', $phonevol)->get();
 			
 		if($query->num_rows() == 0){
 			echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details<br>";
@@ -340,6 +344,7 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 				
 		$req_vol = $query->row();
 		
+			
 		list($req_id, $vol_no) = explode(" ",str_replace('SCNF ','', $content));
 		$req_id = trim($req_id);
 		$vol_no = trim($vol_no);
@@ -356,13 +361,24 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 		}
 		
 		
+		//Check if the volunteer number was specified in the message
+		if($vol_no === ""){
+			
+			echo "Message to $req_vol->phone: The Volunteer ID you have specified doesn't exist. Please check and resend the message.<br>";
+			exit();
+		
+		}
+			
+		
+		
+		
 		$flag_vol_exist = false;
 		
 		$request = $query->row();
 		$name = "int_vol_";
 		
 		//Check if the volunteer number specified exist
-		$query1 = $this->db->from('volunteer')->where('id',$request->{$name.$vol_no})->get();
+		$query1 = $this->db->from('user')->where('id',$request->{$name.$vol_no})->get();
 		if($query1->num_rows() > 0)
 			$flag_vol_exist = true;
 		else{
@@ -375,13 +391,16 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 		$query2 = $this->db->from('request')->where('req_id',$req_id)->where('sub_vol !=',-1)->get();
 		if($query2->num_rows() > 0){
 			$request = $query2->row();
-			$query3 = $this->db->from('volunteer')->where('id',$request->sub_vol)->get();
+			$query3 = $this->db->from('user')->where('id',$request->sub_vol)->get();
 			$sub_vol = $query3->row();
 			list($sub_vol_name) = explode(" ",$sub_vol->name);
 			echo "Message to $req_vol->phone: You have already confirmed $sub_vol_name for the request($req_id).<br>";
 			exit();
 		}
 		
+		$reqdate = new DateTime("$request->date_time");
+		$date = $reqdate->format('d-m-Y');
+		$day_time = $reqdate->format('D g:i A');
 		
 		//If both are true then update the confirmed sub(sub_conf) field in the request table
 		if($flag_req_exist==true && $flag_vol_exist==true){
@@ -395,17 +414,17 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 			$date_time = new DateTime($request->date_time);
 			$date = $date_time->format('d-m-Y');
 			list($req_vol_name) = explode(" ",$req_vol->name);
-			list($center) = explode(" ",$req_vol->center);
+			list($center) = explode(" ",$req_vol->centername);
 			
-			echo "Message to $sub_vol->phone: You have been confirmed to sub for $req_vol_name($req_vol->phone) at $center on $req_vol->day_time($date).<br>";
-			echo "Message to $req_vol->phone: You have confirmed $sub_vol->name($sub_vol->phone) to sub for you on $req_vol->day_time($date).<br>";
+			echo "Message to $sub_vol->phone: You have been confirmed to sub for $req_vol_name($req_vol->phone) at $center on $day_time($date).<br>";
+			echo "Message to $req_vol->phone: You have confirmed $sub_vol->name($sub_vol->phone) to sub for you on $day_time($date).<br>";
 			
 			//Message the other interested volunteers about the confirmation
 			$name = "int_vol_";
 			for($i = 1; $i<=20; $i++){
 				if($request->{$name.$i} != -1 && $request->{$name.$i} != $sub_vol->id){
 					
-					$query2 = $this->db->from('volunteer')->where('id',$request->{$name.$i})->get();
+					$query2 = $this->db->from('user')->where('id',$request->{$name.$i})->get();
 					$int_vol = $query2->row();	
 					echo "Message to $int_vol->phone: We have found a volunteer to sub for the request($request->req_id). Thank you for your response.<br>";
 					
@@ -425,7 +444,7 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 		
 		
 		//Get details about the volunteer who has send the message
-		$query = $this->db->from('volunteer')->where('phone', $phonevol)->get();
+		$query = $this->db->from('user')->where('phone', $phonevol)->get();
 			
 		if($query->num_rows() == 0){
 			echo "Message to $phonevol: Your phone number doesn't exist on the MAD database. Please contact your Ops fellow for more details<br>";
@@ -434,7 +453,7 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 				
 		$req_vol = $query->row();	
 		
-		$content = str_replace('SREM ','', $content);
+		$content = str_replace('SDEL ','', $content);
 		$content = trim($content);
 		
 		//Check if the request id that has been specified exist
@@ -475,9 +494,9 @@ $query = $this->db->select('user.*',FALSE)->select('batch.day,batch.class_time,b
 		
 	}
 }
-//http://localhost/index.php/subfinder/sreq?msisdn=919633977657&keyword=SREQ&content=SREQ
-//http://localhost/index.php/subfinder/sfor?msisdn=919746419487&keyword=SFOR&content=SFOR+9tdn
-//http://localhost/index.php/subfinder/scnf?msisdn=919746419487&keyword=SCNF&content=SCNF+9tdn+2
-//http://localhost/index.php/subfinder/sdel?msisdn=919746419487&keyword=SREM&content=SREM+9tdn
+//http://localhost/index.php/subfinder/main?msisdn=919633977657&keyword=SREQ&content=SREQ
+//http://localhost/index.php/subfinder/main?msisdn=919746419487&keyword=SFOR&content=SFOR+9tdn
+//http://localhost/index.php/subfinder/main?msisdn=919746419487&keyword=SCNF&content=SCNF+9tdn+2
+//http://localhost/index.php/subfinder/main?msisdn=919746419487&keyword=SDEL&content=SDEL+9tdn
 ?>		
 
