@@ -1,19 +1,19 @@
 <?php
 
-class SubFinder extends Controller {
+class SubFinder extends CI_Controller {
 
 		
 	function SubFinder(){
 	
-		parent::Controller();
-		//parent::__construct();
+		//parent::Controller();
+		parent::__construct();
 		
 		$this->load->database();
 		$this->load->helper('string');
 		$this->load->library('sms');
 		date_default_timezone_set('Asia/Calcutta');
 		
-		$this->debug = false;
+		$this->debug = true;
 	}
 	
 			
@@ -627,6 +627,103 @@ class SubFinder extends Controller {
 		}
 		
 	}
+	
+	
+	
+	function analyze(){
+	
+		$query = $this->db->select('City.name as cityname',FALSE)->select('request.*',FALSE)->from('request')->join('User','request.req_vol_id = User.id')
+					->join('City','User.city_id = City.id')->get();
+		$total_no_request = $query->num_rows();
+		$total_no_reply = 0;
+		
+		$name = "int_vol_";
+		foreach($query->result() as $req_row){
+			
+			for($i = 1; $i <=20; $i++){
+				
+				if($req_row->{$name.$i} != -1)
+					$total_no_reply++;
+					
+			}
+		
+		}
+		
+		$city_query = $this->db->from('City')->get();
+		
+		$name_request = "_request_day_";
+		$name_reply = "_reply_day_";
+		
+		foreach($city_query->result() as $city_row){
+			
+			
+			for($d = 0; $d<=15; $d++){
+			
+				${$city_row->name.$name_request.$d} = 0;
+				${$city_row->name.$name_reply.$d} = 0;
+			}
+		}
+		
+		$time_now = new DateTime("now");
+		$time_prior = new DateTime("now - 15 days");
+		
+		foreach($query->result() as $req_row){
+		
+			list($req_on) = explode(" ",$req_row->req_on);
+			list($int_on) = explode(" ",$req_row->int_on);
+			
+			foreach($city_query->result() as $city_row){
+			
+				if($req_row->cityname == $city_row->name){
+				
+					for($d = 15; $d>=0; $d--){
+					
+					$c = new DateTime("now -$d days");
+					$r = new DateTime("$req_on");
+					
+						if($r->format('Y-m-d') == $c->format('Y-m-d')){
+							
+							${$city_row->name.$name_request.$d}++;
+							
+							for($i = 1; $i <=20; $i++){
+							
+								$c = new DateTime("now -$d days");
+								$r = new DateTime("$int_on");
+								
+								if($r->format('Y-m-d') == $c->format('Y-m-d')){
+								
+									if($req_row->{$name.$i} != -1)
+										${$city_row->name.$name_reply.$d}++;
+								}
+							}
+						}
+					}
+				}
+			}
+			
+		}
+		
+		
+		
+		
+		$this->load->view('charts');
+		
+		echo "Total no of requests: $total_no_request<br>";
+		echo "Total no of replies: $total_no_reply<br>";
+		
+		foreach($city_query->result() as $city_row){
+			
+			for($d = 15; $d>=0; $d--){
+				
+				if(${$city_row->name.$name_request.$d} != 0)
+					echo "$city_row->name Requests on Day $d:" . ${$city_row->name.$name_request.$d} . "<br>";
+				if(${$city_row->name.$name_reply.$d} != 0)
+					echo "$city_row->name Replies on Day $d:" . ${$city_row->name.$name_reply.$d} . "<br>";
+			}		
+		}
+	
+	}
+	
 }
 //http://localhost/index.php/subfinder/main?msisdn=919746811700&keyword=SREQ&content=SREQ	
 //http://localhost/index.php/subfinder/main?msisdn=919746419487&keyword=SFOR&content=SFOR+9tdn
