@@ -4,31 +4,29 @@
     <script type="text/javascript">
       google.load("visualization", "1", {packages:["corechart"]});
       google.setOnLoadCallback(drawChart);
-	  
       function drawChart() {
-		<?php
-		$city_row = $city_query->row();
-			
-		for($d = 15; $d>=0; $d--){ ?>
-			var data = google.visualization.arrayToDataTable([
+		var data = google.visualization.arrayToDataTable([
 			  ['Day', 'Requests', 'Replies'],
-			  ['2004',  <?php${$city_row->name.$name_request.$d}?>,      <?php${$city_row->name.$name_reply.$d}?>],
 			  
-			]);				
-		<?php}?>		
-		
-        
+			  <?php
+				
+				for($d = 15; $d>=0; $d--){ 
+					
+					echo "['" . $c->format('d-m') . "'," . ${$city_selected.$name_request.$d} . "," . ${$city_selected.$name_reply.$d} . "],";
+				
+				}
+				?>
+			  ]);
 
+		<?php $title = "Sub Finder Usage Data for " . $city_selected; ?>		
+		
         var options = {
-          title: 'SubFinder Usage Data'
+          title:<?php echo '"' . $title . '"';?>
         };
 
         var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
         chart.draw(data, options);
       }
-	  
-	   
-	  
     </script>
   </head>
   <body>

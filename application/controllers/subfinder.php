@@ -166,6 +166,7 @@ class SubFinder extends CI_Controller {
 		list($Center) = explode(" ",$req_vol->centername);
 		
 		
+		
 		//Calculate the minutes till the class for which the sub was requested
 		
 		
@@ -237,16 +238,20 @@ class SubFinder extends CI_Controller {
 			$query3 = $this->db->from('User')->where('id',$selectedvol_id)->get();
 			$selectedvol = $query3->row();
 			
+			list($selectedvol_name) = explode(" ",$selectedvol->name);
+			
+			
+			
 			if($this->debug == true){
 				echo "<br>Selected Vol: $selectedvol->name <br>";
 				echo "Vol Score: $vol_score<br> 	";
 				echo "Message to $selectedvol->phone:
-				$name requires a substitute at $Center 
-				on $dow $time($date). To sub text 'SFOR $req_id' to 9220092200.<br>" ;
+				$selectedvol_name,<br>$name requires a substitute at $Center on $dow $time($date). To sub text 'SFOR $req_id' to 9220092200.<br><br>Your current credit is $selectedvol->credit<br>" ;
 			}
 			else if($vol_messaged < 5){
 				
 				$this->sms->send($selectedvol->phone,"$name requires a substitute at $Center on $dow $time($date). To sub text 'SFOR $req_id' to 9220092200.");
+				//$this->sms->send($selectedvol->phone,"$selectedvol_name,\0x0A$name requires a substitute at $Center on $dow $time($date). To sub text 'SFOR $req_id' to 9220092200.\0x0A\0x0AYour current credit is $selectedvol->credit");
 			}
 			else{
 			
@@ -630,7 +635,7 @@ class SubFinder extends CI_Controller {
 	
 	
 	
-	function analyze(){
+	function analyze($city_selected){
 	
 		$query = $this->db->select('City.name as cityname',FALSE)->select('request.*',FALSE)->from('request')->join('User','request.req_vol_id = User.id')
 					->join('City','User.city_id = City.id')->get();
@@ -697,6 +702,8 @@ class SubFinder extends CI_Controller {
 								}
 							}
 						}
+						$data[$city_row->name.$name_request.$d] = ${$city_row->name.$name_request.$d};
+						$data[$city_row->name.$name_reply.$d] = ${$city_row->name.$name_reply.$d};
 					}
 				}
 			}
@@ -704,12 +711,21 @@ class SubFinder extends CI_Controller {
 		}
 		
 		
+		$data['c'] = $c;
+		$data['name_request'] = $name_request;
+		$data['name_reply'] = $name_reply;
+		$data['city_selected'] = $city_selected;
 		
 		
-		$this->load->view('charts');
+		
+		$this->load->view('charts',$data);
+		
+		/*
 		
 		echo "Total no of requests: $total_no_request<br>";
 		echo "Total no of replies: $total_no_reply<br>";
+		
+		
 		
 		foreach($city_query->result() as $city_row){
 			
@@ -721,6 +737,30 @@ class SubFinder extends CI_Controller {
 					echo "$city_row->name Replies on Day $d:" . ${$city_row->name.$name_reply.$d} . "<br>";
 			}		
 		}
+		
+		*/
+	
+	}
+	
+	
+	function usage(){
+	
+		$query = $this->db->select('City.name as cityname',FALSE)->from('City')->get();
+		
+		$city_ordered = $query->result();
+		
+		asort($city_ordered);
+		
+		foreach($city_ordered as $city){
+			
+			echo '<a href="./analyze/' . $city->cityname . '">' . $city->cityname . '</a><br>';
+		
+		}
+	
+		
+		
+		
+			
 	
 	}
 	
