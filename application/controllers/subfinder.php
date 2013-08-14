@@ -1,12 +1,12 @@
 <?php
 
-class SubFinder extends CI_Controller {
+class SubFinder extends Controller {
 
 		
 	function SubFinder(){
 	
-		//parent::Controller();
-		parent::__construct();
+		parent::Controller();
+		//parent::__construct();
 		
 		$this->load->database();
 		$this->load->helper('string');
@@ -48,7 +48,9 @@ class SubFinder extends CI_Controller {
 		
 		$today = new DateTime("now");
 		$currentyear =  $today->format('Y');
-		$changedate = new DateTime("31st April $currentyear");
+		//$changedate = new DateTime("31st April $currentyear");
+		
+		$changedate = new DateTime("31st June $currentyear");
 	
 		if($today <= $changedate)
 			$madyear = $today->format('Y') - 1;
@@ -662,7 +664,7 @@ class SubFinder extends CI_Controller {
 		foreach($city_query->result() as $city_row){
 			
 			
-			for($d = 0; $d<=15; $d++){
+			for($d = 0; $d<=30; $d++){
 			
 				${$city_row->name.$name_request.$d} = 0;
 				${$city_row->name.$name_reply.$d} = 0;
@@ -670,7 +672,7 @@ class SubFinder extends CI_Controller {
 		}
 		
 		$time_now = new DateTime("now");
-		$time_prior = new DateTime("now - 15 days");
+		$time_prior = new DateTime("now - 30 days");
 		
 		foreach($query->result() as $req_row){
 		
@@ -681,7 +683,7 @@ class SubFinder extends CI_Controller {
 			
 				if($req_row->cityname == $city_row->name){
 				
-					for($d = 15; $d>=0; $d--){
+					for($d = 30; $d>=0; $d--){
 					
 					$c = new DateTime("now -$d days");
 					$r = new DateTime("$req_on");
@@ -711,14 +713,14 @@ class SubFinder extends CI_Controller {
 		}
 		
 		
-		$data['c'] = $c;
+		
 		$data['name_request'] = $name_request;
 		$data['name_reply'] = $name_reply;
 		$data['city_selected'] = $city_selected;
 		
 		
 		
-		$this->load->view('charts',$data);
+		$this->load->view('subfinder_charts',$data);
 		
 		/*
 		
@@ -729,7 +731,7 @@ class SubFinder extends CI_Controller {
 		
 		foreach($city_query->result() as $city_row){
 			
-			for($d = 15; $d>=0; $d--){
+			for($d = 30; $d>=0; $d--){
 				
 				if(${$city_row->name.$name_request.$d} != 0)
 					echo "$city_row->name Requests on Day $d:" . ${$city_row->name.$name_request.$d} . "<br>";
@@ -751,11 +753,9 @@ class SubFinder extends CI_Controller {
 		
 		asort($city_ordered);
 		
-		foreach($city_ordered as $city){
-			
-			echo '<a href="./analyze/' . $city->cityname . '">' . $city->cityname . '</a><br>';
+		$data['city_ordered'] = $city_ordered;
 		
-		}
+		$this->load->view('subfinder_usage',$data);
 	
 		
 		
