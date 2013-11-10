@@ -43,10 +43,10 @@
 	<?php 
 	if($flag == false)
 		echo '<h3 style="text-align:center">' . $city_selected. ' has not started using SubFinder<h3>';
-	else
+	else 
 		echo '<h3 style="text-align:center">' . $city_selected . '<h3>';
 	?>
-	<div id="chart_div" style="width: 900px; height: 500px;"></div>
+	<div id="chart_div" style="width: 600px; height: 250px;"></div>
 	
   </body>
 </html>
